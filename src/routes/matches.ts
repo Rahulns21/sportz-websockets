@@ -5,8 +5,8 @@ import {
 } from "../validation/matches.ts";
 import { db } from "../db/db.ts";
 import { matches } from "../db/schema.ts";
-import { getMatchStatus } from "../utils/match-status.ts";
-import { desc } from "drizzle-orm";
+import { getMatchStatus, syncMatchStatus } from "../utils/match-status.ts";
+import { desc, eq } from "drizzle-orm";
 
 export const matchRouter = Router();
 
@@ -28,7 +28,20 @@ matchRouter.get("/", async (req, res) => {
       .orderBy(desc(matches.createdAt))
       .limit(limit);
 
-    return res.json({ data });
+    const syncedData = await Promise.all(
+      data.map(async (match) => {
+        const status = await syncMatchStatus(match, async (nextStatus) => {
+          await db
+            .update(matches)
+            .set({ status: nextStatus })
+            .where(eq(matches.id, match.id));
+        });
+
+        return { ...match, status };
+      })
+    );
+
+    return res.json({ data: syncedData });
   } catch (error) {
     return res.status(500).json({ error: "Failed to list matches." });
   }
