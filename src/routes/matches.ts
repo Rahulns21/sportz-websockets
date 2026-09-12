@@ -19,17 +19,17 @@ matchRouter.get("/", async (req, res) => {
       .json({ error: "Invalid query", details: parsed.error.issues });
   }
 
-  const limit = parsed.data?.limit ?? 50;
+  const limit = parsed.data.limit ?? 50;
 
   try {
-    const data = await db
+    const rows = await db
       .select()
       .from(matches)
       .orderBy(desc(matches.createdAt))
       .limit(limit);
 
     const syncedData = await Promise.all(
-      data.map(async (match) => {
+      rows.map(async (match) => {
         const status = await syncMatchStatus(match, async (nextStatus) => {
           await db
             .update(matches)
@@ -53,7 +53,7 @@ matchRouter.post("/", async (req, res) => {
   if (!parsed.success)
     return res.status(400).json({
       error: "Invalid payload.",
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
 
   const {
@@ -78,8 +78,6 @@ matchRouter.post("/", async (req, res) => {
 
     return res.status(201).json({ data: event });
   } catch (e) {
-    return res
-      .status(500)
-      .json({ error: "Failed to create match.", details: JSON.stringify(e) });
+    return res.status(500).json({ error: "Failed to create match." });
   }
 });

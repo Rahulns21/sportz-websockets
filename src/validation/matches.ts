@@ -21,19 +21,13 @@ export const createMatchSchema = z
     sport: z.string().min(1),
     homeTeam: z.string().min(1),
     awayTeam: z.string().min(1),
-    startTime: z.iso
-      .datetime({ offset: true })
-      .transform((value) => new Date(value)),
-    endTime: z.iso
-      .datetime({ offset: true })
-      .transform((value) => new Date(value)),
+    startTime: z.iso.datetime().transform((val) => new Date(val)),
+    endTime: z.iso.datetime().transform((val) => new Date(val)),
     homeScore: z.number().int().nonnegative().default(0),
     awayScore: z.number().int().nonnegative().default(0),
   })
-  .superRefine((date, ctx) => {
-    const start = new Date(date.startTime);
-    const end = new Date(date.endTime);
-    if (end <= start) {
+  .superRefine((data, ctx) => {
+    if (data.endTime <= data.startTime) {
       ctx.addIssue({
         code: "custom",
         message: "endTime must be chronologically after startTime",
