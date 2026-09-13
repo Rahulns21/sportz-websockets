@@ -24,11 +24,15 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
+    "i": "^0.3.7",
+    "npm": "^11.19.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "ws": "^8.21.3",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
