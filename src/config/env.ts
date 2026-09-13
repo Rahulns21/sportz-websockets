@@ -6,7 +6,6 @@ const envSchema = z.object({
     PORT: z.coerce.number().int().positive().max(65535).default(8000),
     HOST: z.string().min(1).default("0.0.0.0"),
     DATABASE_URL: z.url(),
-    DATABASE_URL_UNPOOLED: z.url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
