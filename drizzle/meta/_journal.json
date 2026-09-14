@@ -8,6 +8,13 @@
       "when": 1789110347397,
       "tag": "0000_futuristic_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789370568206,
+      "tag": "0001_hard_fallen_one",
+      "breakpoints": true
     }
   ]
 }
