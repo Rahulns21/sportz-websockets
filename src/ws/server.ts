@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { Match } from "../db/db.ts";
+import { wsArcjet } from "../arcjet.ts";
 
 interface SendJsonParams {
   socket: WebSocket;
@@ -41,7 +42,23 @@ export function attachWebSocketServer({ server }: AttachWssParams): WebSocketApi
     maxPayload: 1024 * 1024,
   });
 
-  wss.on("connection", (socket: WebSocket) => {
+  wss.on("connection", async (socket: WebSocket, req) => {
+    if (wsArcjet) {
+      try {
+        const decision = await wsArcjet.protect(req);
+
+        if (decision.isDenied()) {
+          const code = decision.reason.isRateLimit() ? 1013 : 1008;
+          const reason = decision.reason.isRateLimit() ? 'Rate limit exceeded' : 'Access denied';
+          socket.close(code, reason);
+        }
+      } catch (e) {
+        console.error(`WS connection error ${e}`);
+        socket.close(1011, 'Server security error');
+        return;
+      }
+    }
+
     console.log("WebSocket client connected");
 
     sendJson({ socket, payload: { type: "welcome" } });
