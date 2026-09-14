@@ -4,6 +4,8 @@ import type { Match } from "../types/db.ts";
 import { wsArcjet } from "../arcjet.ts";
 
 const matchSubscribers = new Map<number, Set<WebSocket>>();
+const subscriptionCounts = new WeakMap<WebSocket, number>();
+const MAX_SUBSCRIPTIONS_PER_SOCKET = 100;
 
 interface SendJsonParams {
   socket: WebSocket;
@@ -43,7 +45,26 @@ interface SubscriptionParams {
   socket: WebSocket;
 }
 
-function subscribe({ matchId, socket }: SubscriptionParams) {
+interface SubscribeResult {
+  isNew: boolean;
+  ok: boolean;
+}
+
+function isValidMatchId(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value > 0 &&
+    Number.isSafeInteger(value)
+  );
+}
+
+function subscribe({ matchId, socket }: SubscriptionParams): SubscribeResult {
+  const currentCount = subscriptionCounts.get(socket) ?? 0;
+  if (currentCount >= MAX_SUBSCRIPTIONS_PER_SOCKET) {
+    return { isNew: false, ok: false };
+  }
+
   let subscribers = matchSubscribers.get(matchId);
   if (!subscribers) {
     subscribers = new Set();
@@ -52,14 +73,23 @@ function subscribe({ matchId, socket }: SubscriptionParams) {
 
   const wasAlreadySubscribed = subscribers.has(socket);
   subscribers.add(socket);
-  return !wasAlreadySubscribed;
+
+  if (!wasAlreadySubscribed) {
+    subscriptionCounts.set(socket, currentCount + 1);
+  }
+  return { isNew: !wasAlreadySubscribed, ok: true };
 }
 
-function unsubscribe({ matchId, socket }: SubscriptionParams) {
+function unsubscribe({ matchId, socket }: SubscriptionParams): boolean {
   const subscribers = matchSubscribers.get(matchId);
   if (!subscribers) return false;
 
   const wasSubscribed = subscribers.delete(socket);
+
+  if (wasSubscribed) {
+    const currentCount = subscriptionCounts.get(socket) ?? 0;
+    subscriptionCounts.set(socket, Math.max(0, currentCount - 1));
+  }
 
   if (subscribers.size === 0) {
     matchSubscribers.delete(matchId);
@@ -74,14 +104,18 @@ function cleanupSubscription(socket: WebSocket) {
       matchSubscribers.delete(matchId);
     }
   }
+
+  subscriptionCounts.delete(socket);
 }
 
-function sendJson({ socket, payload }: SendJsonParams) {
+function sendJson({ socket, payload }: SendJsonParams): void {
   if (socket.readyState !== WebSocket.OPEN) return;
   socket.send(JSON.stringify(payload));
 }
 
 function broadcastToAll({ wss, payload }: BroadcastParams) {
+  if (wss.clients.size === 0) return;
+
   const message = JSON.stringify(payload);
 
   for (const client of wss.clients) {
@@ -124,30 +158,33 @@ function handleMessage(socket: WebSocket, data: string) {
 
   const msg = message as Record<string, unknown>;
 
-  if (
-    msg.type === "subscribe" &&
-    typeof msg.matchId === "number" &&
-    Number.isInteger(msg.matchId)
-  ) {
-    const isNew = subscribe({ matchId: msg.matchId, socket });
+  if (msg.type === "subscribe" && isValidMatchId(msg.matchId)) {
+    const { isNew, ok } = subscribe({ matchId: msg.matchId, socket });
+
+    if (!ok) {
+      return sendJson({
+        socket,
+        payload: {
+          type: "error",
+          message: "Subscription limit reached",
+          matchId: msg.matchId,
+        },
+      });
+    }
+
     sendJson({
       socket,
       payload: isNew
         ? { type: "subscribed", matchId: msg.matchId }
         : {
-            type: "error",
-            message: "Already subscribed to this match",
+            type: "already_subscribed",
             matchId: msg.matchId,
           },
     });
     return;
   }
 
-  if (
-    msg.type === "unsubscribe" &&
-    typeof msg.matchId === "number" &&
-    Number.isInteger(msg.matchId)
-  ) {
+  if (msg.type === "unsubscribe" && isValidMatchId(msg.matchId)) {
     const wasSubscribed = unsubscribe({ matchId: msg.matchId, socket });
 
     sendJson({
@@ -155,8 +192,7 @@ function handleMessage(socket: WebSocket, data: string) {
       payload: wasSubscribed
         ? { type: "unsubscribed", matchId: msg.matchId }
         : {
-            type: "error",
-            message: "Not subscribed to this match",
+            type: "not_subscribed",
             matchId: msg.matchId,
           },
     });
