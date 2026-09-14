@@ -3,6 +3,7 @@ import http from "http";
 import { matchRouter } from "./routes/matches.js";
 import { env } from "./config/env.ts";
 import { attachWebSocketServer } from "./ws/server.ts";
+import { securityMiddleware } from "./arcjet.ts";
 
 const PORT: number = env.PORT;
 const HOST: string = env.HOST;
@@ -10,6 +11,7 @@ const HOST: string = env.HOST;
 const app = express();
 const server = http.createServer(app);
 
+app.use(securityMiddleware());
 app.use(express.json());
 
 app.get("/", (req, res) => {
