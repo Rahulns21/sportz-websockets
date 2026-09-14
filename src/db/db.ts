@@ -10,5 +10,3 @@ const pool = new Pool({
 });
 
 export const db = drizzle(pool);
-export type Match = InferSelectModel<typeof matches>;
-export type Commentary = InferSelectModel<typeof commentary>;

@@ -1,11 +1,13 @@
+import "dotenv/config";
 import express from "express";
 import http from "http";
-import { matchRouter } from "./routes/matches.js";
-import { env } from "./config/env.ts";
-import { attachWebSocketServer } from "./ws/server.ts";
 import { securityMiddleware } from "./arcjet.ts";
+import { env } from "./config/env.ts";
+import { commentaryRouter } from "./routes/commentary.ts";
+import { matchRouter } from "./routes/matches.ts";
+import { attachWebSocketServer } from "./ws/server.ts";
 
-const PORT: number = env.PORT;
+const PORT = env.PORT;
 const HOST: string = env.HOST;
 
 const app = express();
@@ -19,13 +21,17 @@ app.get("/", (req, res) => {
 });
 
 app.use("/matches", matchRouter);
+app.use("/matches/:id/commentary", commentaryRouter);
 
-const { broadcastMatchCreated } = attachWebSocketServer({ server });
+const { broadcastMatchCreated, broadcastCommentary } = attachWebSocketServer({ server });
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
+app.locals.broadcastCommentary = broadcastCommentary;
 
 server.listen(PORT, HOST, () => {
   const baseUrl =
     HOST === "0.0.0.0" ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`;
   console.log(`Http Server is running on ${baseUrl}`);
-  console.log(`WebSocket Server is running on ${baseUrl.replace('http', 'ws')}/ws`);
+  console.log(
+    `WebSocket Server is running on ${baseUrl.replace("http", "ws")}/ws`
+  );
 });
