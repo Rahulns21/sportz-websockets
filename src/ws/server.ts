@@ -31,6 +31,12 @@ interface BroadcastCommentaryParams {
   comment: unknown;
 }
 
+interface BroadcastScoreUpdateParams {
+  matchId: number;
+  homeScore: number;
+  awayScore: number;
+}
+
 interface AttachWssParams {
   server: Server;
 }
@@ -38,6 +44,7 @@ interface AttachWssParams {
 interface WebSocketApi {
   broadcastMatchCreated: (params: BroadcastMatchCreatedParams) => void;
   broadcastCommentary: (params: BroadcastCommentaryParams) => void;
+  broadcastScoreUpdate: (params: BroadcastScoreUpdateParams) => void;
 }
 
 interface SubscriptionParams {
@@ -273,5 +280,20 @@ export function attachWebSocketServer({
     });
   }
 
-  return { broadcastMatchCreated, broadcastCommentary };
+  function broadcastScoreUpdate({
+    matchId,
+    homeScore,
+    awayScore,
+  }: BroadcastScoreUpdateParams) {
+    broadcastToAll({
+      wss,
+      payload: {
+        type: "score_update",
+        matchId,
+        data: { homeScore, awayScore },
+      },
+    });
+  }
+
+  return { broadcastMatchCreated, broadcastCommentary, broadcastScoreUpdate };
 }

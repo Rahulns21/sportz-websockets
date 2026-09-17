@@ -16,6 +16,11 @@ export const matchIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const updateScoreSchema = z.object({
+  homeScore: z.number().int().nonnegative(),
+  awayScore: z.number().int().nonnegative(),
+});
+
 export const createMatchSchema = z
   .object({
     sport: z.string().min(1),
