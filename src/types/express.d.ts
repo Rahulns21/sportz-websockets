@@ -12,6 +12,7 @@ declare global {
         matchId: number;
         homeScore: number;
         awayScore: number;
+        stats: unknown;
       }) => void;
     }
   }

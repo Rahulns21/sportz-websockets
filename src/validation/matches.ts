@@ -19,6 +19,7 @@ export const matchIdParamSchema = z.object({
 export const updateScoreSchema = z.object({
   homeScore: z.number().int().nonnegative(),
   awayScore: z.number().int().nonnegative(),
+  stats: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const createMatchSchema = z

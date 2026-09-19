@@ -15,6 +15,13 @@
       "when": 1789370568206,
       "tag": "0001_hard_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789804580656,
+      "tag": "0002_big_ezekiel",
+      "breakpoints": true
     }
   ]
 }
