@@ -1,14 +1,16 @@
+import { desc, eq } from "drizzle-orm";
 import { Router } from "express";
+import { db } from "../db/db.ts";
+import { matches } from "../db/schema.ts";
+import { getMatchStatus, syncMatchStatus } from "../utils/match-status.ts";
+import { computeDisplayScore } from "../utils/score.ts";
 import {
   createMatchSchema,
   listMatchesQuerySchema,
   matchIdParamSchema,
   updateScoreSchema,
 } from "../validation/matches.ts";
-import { db } from "../db/db.ts";
-import { matches } from "../db/schema.ts";
-import { getMatchStatus, syncMatchStatus } from "../utils/match-status.ts";
-import { desc, eq } from "drizzle-orm";
+import { Sport, sportStatsSchemas } from "../validation/sports.ts";
 
 export const matchRouter = Router();
 
@@ -110,23 +112,58 @@ matchRouter.patch("/:id/score", async (req, res) => {
   }
 
   try {
+    const [match] = await db
+      .select()
+      .from(matches)
+      .where(eq(matches.id, paramsResult.data.id));
+
+    if (!match) {
+      return res.status(404).json({ error: "Match not found." });
+    }
+
+    // validate stats against the sport
+    let validatedStats: unknown = undefined;
+    if (bodyResult.data.stats !== undefined) {
+      const statsSchema = sportStatsSchemas[match.sport as Sport];
+      if (!statsSchema) {
+        return res.status(400).json({ error: `Unknown sport: ${match.sport}` });
+      }
+      const statsResult = statsSchema.safeParse(bodyResult.data.stats);
+
+      if (!statsResult.success) {
+        return res.status(400).json({
+          error: `Invalid ${match.sport} stats.`,
+          details: statsResult.error.issues,
+        });
+      }
+      validatedStats = statsResult.data;
+    }
+
+    const displayScore = computeDisplayScore({
+      sport: match.sport,
+      stats: validatedStats,
+      fallback: bodyResult.data,
+    });
+
     const [updated] = await db
       .update(matches)
       .set({
-        homeScore: bodyResult.data.homeScore,
-        awayScore: bodyResult.data.awayScore,
+        homeScore: displayScore.homeScore,
+        awayScore: displayScore.awayScore,
+        ...(validatedStats !== undefined && { sportStats: validatedStats }),
       })
       .where(eq(matches.id, paramsResult.data.id))
       .returning();
 
     if (!updated) {
-      return res.status(404).json({ error: "Match not found." });
+      return res.status(500).json({ error: "Failed to update match." });
     }
 
     res.app.locals.broadcastScoreUpdate({
       matchId: updated.id,
       homeScore: updated.homeScore,
       awayScore: updated.awayScore,
+      stats: updated.sportStats,
     });
 
     return res.json({ data: updated });

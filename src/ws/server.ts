@@ -35,6 +35,7 @@ interface BroadcastScoreUpdateParams {
   matchId: number;
   homeScore: number;
   awayScore: number;
+  stats: unknown;
 }
 
 interface AttachWssParams {
@@ -284,13 +285,14 @@ export function attachWebSocketServer({
     matchId,
     homeScore,
     awayScore,
+    stats
   }: BroadcastScoreUpdateParams) {
     broadcastToAll({
       wss,
       payload: {
         type: "score_update",
         matchId,
-        data: { homeScore, awayScore },
+        data: { homeScore, awayScore, stats },
       },
     });
   }
