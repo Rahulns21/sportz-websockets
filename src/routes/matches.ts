@@ -11,6 +11,7 @@ import {
   updateScoreSchema,
 } from "../validation/matches.ts";
 import { Sport, sportStatsSchemas } from "../validation/sports.ts";
+import { requireApiKey } from "../middleware/auth.ts";
 
 export const matchRouter = Router();
 
@@ -51,7 +52,7 @@ matchRouter.get("/", async (req, res) => {
   }
 });
 
-matchRouter.post("/", async (req, res) => {
+matchRouter.post("/", requireApiKey, async (req, res) => {
   const parsed = createMatchSchema.safeParse(req.body);
 
   if (!parsed.success)
@@ -94,7 +95,7 @@ matchRouter.post("/", async (req, res) => {
   }
 });
 
-matchRouter.patch("/:id/score", async (req, res) => {
+matchRouter.patch("/:id/score", requireApiKey, async (req, res) => {
   const paramsResult = matchIdParamSchema.safeParse(req.params);
 
   if (!paramsResult.success) {

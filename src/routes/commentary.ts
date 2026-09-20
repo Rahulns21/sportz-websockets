@@ -7,6 +7,7 @@ import {
 import { db } from "../db/db.ts";
 import { commentary } from "../db/schema.ts";
 import { desc, eq } from "drizzle-orm";
+import { requireApiKey } from "../middleware/auth.ts";
 
 const MAX_LIMIT: number = 100;
 
@@ -49,7 +50,7 @@ commentaryRouter.get("/", async (req, res) => {
   }
 });
 
-commentaryRouter.post("/", async (req, res) => {
+commentaryRouter.post("/", requireApiKey, async (req, res) => {
   const paramsResult = matchIdParamSchema.safeParse(req.params);
 
   if (!paramsResult.success) {
